@@ -1,0 +1,121 @@
+var socket = require('socket.io-client')('http://localhost:3000');
+const repl = require('repl')
+const chalk = require('chalk');  
+const { exec } = require('child_process');
+var rsaWrapper = require('./encrypt_decrypt')
+var fs = require('fs')
+
+
+function eror(code){
+	switch(code){
+		case 1: return "Genral Error\n"; break;
+		case 2: return "Misuse of Shell builtins\n";
+		case 126: return "Comman invoked cannot be executed\n"
+		case 127: return "Command not Found\n"
+		case 130: return "Script termintated by Ctrl-C\n"
+	}
+}
+
+
+//Initialise the RSA keys
+rsaWrapper.initLoadServerKeys(__dirname);
+
+
+//To Handle disconnection
+socket.on('disconnect', function() {
+      socket.emit('disconnect')
+  });
+
+
+//When Client is connected to server
+socket.on('connect', () => {
+      console.log(chalk.red('=== start chatting ==='))
+  })  
+
+socket.emit('con');
+
+
+//To Handle Command Request
+socket.on('cmd', async (data) => {
+
+	//Decrypt command using server Private key
+	var dec_cmd = rsaWrapper.decrypt(rsaWrapper.serverPrivate, data.cmd)
+
+	//Execute the command at bash level
+	//stdout: Handle Output of command
+	//stderr: Handle Error of command
+	await exec(dec_cmd, (stderr, stdout)=>{
+		if(stderr){
+
+			var err = eror(stderr.code);
+			//create a json object containing encrypted Error and sender socket id
+			console.log("Error: ",stderr);
+			var error = { 
+				error : rsaWrapper.encrypt(rsaWrapper.clientPub, err), 
+				id : data.id
+			}
+
+			//Emit the error object
+			socket.emit('err', error);
+		}else{
+
+			console.log("OUT: ",stdout);
+			//create a json object containing encrypted result and sender socket id
+			var success = {
+				res : rsaWrapper.encrypt(rsaWrapper.clientPub, stdout),
+				id : data.id
+			}
+			socket.emit('success', success);
+		}
+	});
+  })
+
+
+
+//To send back message to the sender (ACK)
+socket.on('sender_msg', (data) => {
+
+        console.log(chalk.green("Message: ",data));
+  })
+
+
+
+//To send message to reciever (Other user in case of msg, and sender user in case of command)
+socket.on('reciever_msg', (data) => {
+	var dec_data = rsaWrapper.decrypt(rsaWrapper.serverPrivate, data)
+        console.log(chalk.green("Message: ",dec_data));
+  })
+
+
+repl.start({
+      prompt: '',
+      eval: (cmd) => {
+	  var cmd = cmd.split(':')
+	      var op = cmd[0];
+	      var msg = cmd[1]
+	
+	   //if op is undefined or op is not equal to cmd and msg
+	   //then it means required format is not provided so it will show usage
+	   if((op == undefined)||((op != "cmd")&&(op != "msg"))){
+		   usage();
+	   }else{
+		   var log;
+		if(op == "cmd"){
+			log = "Command executed from client side is " + msg;
+		} else{
+			log = "Message send from client side is " + msg;
+		}
+
+		//To Write Client log
+		fs.appendFileSync('client.log', log);
+		var enc_msg = rsaWrapper.encrypt(rsaWrapper.clientPub, msg);
+        	socket.emit(op,enc_msg)
+	   }
+      }
+  })
+
+function usage(){
+	console.log("USAGE: ");
+	console.log("cmd: <COMMAND>");
+	console.log("msg: <MESSAGE>\n");
+}
