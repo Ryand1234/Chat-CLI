@@ -15,50 +15,72 @@ var io = require('socket.io').listen(server)
 
 var queue = new PriorityQueue() //Priority Messaging Queue
 var user = new Array() // Array to store socket id so that user can execute command on another terminal not on its own terminal
+var user_name = new Array()
 var i = 0;
 var log;
 
 io.on('connection', (socket)=>{
 	
-	socket.on('con', ()=>{
-		socket.join('code');
+	socket.on('con', (data)=>{
+		if(socket.con == undefined){
+			socket.join('code');
 
-		//Push Socket id to user array and write to log
-		log = "A client connected\n"
-		fs.appendFileSync('server.log', log);
-		user.push(socket.id);
+			//Push Socket id to user array and write to log
+			var dec_data = rsaWrapper.decrypt(rsaWrapper.clientPrivate, data);
+			var strip_data = dec_data.replace(/(\n| )/gm, "");
+			log = `${strip_data} connected\n`
+			fs.appendFileSync('server.log', log);
+			user.push(socket.id);
+			user_name.push(strip_data)
+			socket.con = true;
+			io.to(socket.id).emit('con', "Connected");
+		} else {
+			io.to(socket.id).emit('con', "Please Disconnect from previous session to again login\n");
+		}
+	});
+
+	socket.on('user', ()=>{
+		io.to(socket.id).emit('user', user_name);
 	});
 
 	socket.on('cmd', (data)=>{
-		//Decrypt the command from client
-		var dec_data = rsaWrapper.decrypt(rsaWrapper.clientPrivate, data);
+		if(socket.con != undefined){
+			//Decrypt the command from client
+			var dec_data = rsaWrapper.decrypt(rsaWrapper.clientPrivate, data);
 
-		//Encrypt the command with server key
-                var enc_data = rsaWrapper.encrypt(rsaWrapper.serverPub, dec_data);
+			//Encrypt the command with server key
+	                var enc_data = rsaWrapper.encrypt(rsaWrapper.serverPub, dec_data);
 
-		//Create a json object that contain command and socket id so that 
-		//the error or result can be transmitted back to correct person
-		var ndata = {
-			id : socket.id,
-			cmd : enc_data
-		};
+			//Create a json object that contain command and socket id so that 
+			//the error or result can be transmitted back to correct person
+			var ndata = {
+				id : socket.id,
+				cmd : enc_data
+			};
 
-		//Push to Priority Queue
-		queue.queue(ndata);
+			//Push to Priority Queue
+			queue.queue(ndata);
 
-		//find the a user
-		var index = user.indexOf(socket.id);
-		if(index > -1){
-			i = index - 1;
+			//find the a user
+			var index = user.indexOf(socket.id);
+			if(index > -1){
+				if(index == 0){
+					i = index + 1
+				} else {
+					i = index - 1
+				}
+			} 
+		
+		
+			//Write to server log user which will execute a command
+			log = "Command will be executed on user " + (i + 1) + "\n";
+			fs.appendFileSync('server.log', log);
+
+			//transmitted the command to the required user
+			io.to(user[i]).emit('cmd', queue.dequeue());
+		} else {
+			io.to(socket.id).emit("con", "Please Provide a User name to connect");
 		}
-		
-		
-		//Write to server log user which will execute a command
-		log = "Command will be executed on user " + (i + 1) + "\n";
-		fs.appendFileSync('server.log', log);
-
-		//transmitted the command to the required user
-		io.to(user[i]).emit('cmd', queue.dequeue());
 	});
 
 	socket.on('err', (data)=>{
@@ -85,29 +107,30 @@ io.on('connection', (socket)=>{
 	});
 
 	socket.on('msg', (data)=>{
-		//Decrypt Data
-		var dec_data = rsaWrapper.decrypt(rsaWrapper.clientPrivate, data);
+		if(socket.con != undefined){
+			//Decrypt Data
+			var dec_data = rsaWrapper.decrypt(rsaWrapper.clientPrivate, data);
 
-		//Remove unnecessary newline character
-		dec_data.replace(/(\r\n|\n|\r)/gm,"")
+			//Remove unnecessary newline character
+			dec_data.replace(/(\r\n|\n|\r)/gm,"")
 
-		//Encrypt it back
-		var enc_data = rsaWrapper.encrypt(rsaWrapper.serverPub, dec_data);
-		queue.queue(enc_data);
-//		socket.leave('code');
+			//Encrypt it back
+			var enc_data = rsaWrapper.encrypt(rsaWrapper.serverPub, dec_data);
+			queue.queue(enc_data);
 
-		//Transmit msg to all user except sender
-                socket.broadcast.to('code').emit('reciever_msg', queue.dequeue());
+			//Transmit msg to all user except sender
+                	socket.broadcast.to('code').emit('reciever_msg', queue.dequeue());
 
-		//send ACK to sender
-		io.to(socket.id).emit('sender_msg', "ACK");
+			//send ACK to sender
+			io.to(socket.id).emit('sender_msg', "ACK");
 
-		//Write to log
-		log = "Message transmitted to all the clients\n"
-		fs.appendFileSync('server.log', log);
+			//Write to log
+			log = "Message transmitted to all the clients\n"
+			fs.appendFileSync('server.log', log);
 
-		//Join user back
-  //      	socket.join('code');
+		} else {
+                        io.to(socket.id).emit("con", "Please Provide a User name to connect");
+                }
         });
 
 	socket.on('disconnect', ()=>{

@@ -11,6 +11,7 @@
   "author": "Riyan",
   "license": "ISC",
   "dependencies": {
+    "amqplib": "^0.5.6",
     "bcryptjs": "^2.4.3",
     "chalk": "^4.0.0",
     "crypto": "^1.0.1",

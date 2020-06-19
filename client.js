@@ -32,8 +32,19 @@ socket.on('connect', () => {
       console.log(chalk.red('=== start chatting ==='))
   })  
 
-socket.emit('con');
 
+//Handle Connection Error
+socket.on('con', (data)=>{
+	console.log(chalk.red(data));
+});
+
+//User list
+socket.on('user', (data)=>{
+	console.log(chalk.green("=====User List====="));
+	for(let user of data){
+		console.log(chalk.red(user))
+	}
+});
 
 //To Handle Command Request
 socket.on('cmd', async (data) => {
@@ -49,7 +60,6 @@ socket.on('cmd', async (data) => {
 
 			var err = eror(stderr.code);
 			//create a json object containing encrypted Error and sender socket id
-			console.log("Error: ",stderr);
 			var error = { 
 				error : rsaWrapper.encrypt(rsaWrapper.clientPub, err), 
 				id : data.id
@@ -59,7 +69,6 @@ socket.on('cmd', async (data) => {
 			socket.emit('err', error);
 		}else{
 
-			console.log("OUT: ",stdout);
 			//create a json object containing encrypted result and sender socket id
 			var success = {
 				res : rsaWrapper.encrypt(rsaWrapper.clientPub, stdout),
@@ -94,16 +103,23 @@ repl.start({
 	      var op = cmd[0];
 	      var msg = cmd[1]
 	
-	   //if op is undefined or op is not equal to cmd and msg
+	   //if op is undefined or op is not equal to cmd, msg, user and con
 	   //then it means required format is not provided so it will show usage
-	   if((op == undefined)||((op != "cmd")&&(op != "msg"))){
+	   if((op == undefined)||((op != "cmd")&&(op != "msg")&&(op != "user")&&(op != "con"))){
 		   usage();
 	   }else{
 		   var log;
 		if(op == "cmd"){
 			log = "Command executed from client side is " + msg;
-		} else{
-			log = "Message send from client side is " + msg;
+		} else {
+			if(op == "msg"){
+				log = "Message send from client side is " + msg;
+			} else {
+				if(op == "user"){
+					log = "User requested for connected user list";
+				} else {
+					log = "User requested for connection"
+				}
 		}
 
 		//To Write Client log
@@ -117,5 +133,7 @@ repl.start({
 function usage(){
 	console.log("USAGE: ");
 	console.log("cmd: <COMMAND>");
-	console.log("msg: <MESSAGE>\n");
+	console.log("msg: <MESSAGE>");
+	console.log("user:");
+	console.log("con: <USER_NAME>\n");
 }
