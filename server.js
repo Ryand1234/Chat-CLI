@@ -16,6 +16,7 @@ var io = require('socket.io').listen(server)
 var queue = new PriorityQueue() //Priority Messaging Queue
 var user = new Array() // Array to store socket id so that user can execute command on another terminal not on its own terminal
 var user_name = new Array()
+var user_name_list = {}
 var i = 0;
 var log;
 
@@ -32,6 +33,7 @@ io.on('connection', (socket)=>{
 			fs.appendFileSync('server.log', log);
 			user.push(socket.id);
 			user_name.push(strip_data)
+			user_name_list[strip_data] = socket.id;
 			socket.con = true;
 			io.to(socket.id).emit('con', "Connected");
 		} else {
@@ -133,13 +135,44 @@ io.on('connection', (socket)=>{
                 }
         });
 
+	socket.on("pmsg", (data)=>{
+		if(socket.on != undefined){
+			//Decrypt Message
+			var dec_msg = rsaWrapper.decrypt(rsaWrapper.clientPrivate, data.msg)
+
+			//Encrypt it back
+			var enc_msg = rsaWrapper.encrypt(rsaWrapper.serverPub, dec_msg)
+			var snd_obj = {
+				msg : enc_msg,
+				from : data.from
+			}
+
+			queue.queue(snd_obj);
+
+			//find user id 
+			var id = user_name_list[data.to]
+
+			//Transmit msg to Specific Client
+			io.to(id).emit("recieve_pmsg", queue.dequeue());
+
+			//Write to log
+			log = "Message send to Specified Client\n"
+			fs.appendFileSync("server.log", log);
+
+		} else {
+			io.to(socket.id).emit("con", "Please Provide a User name to connect");
+		}
+	});
+
 	socket.on('disconnect', ()=>{
 		console.log("Disconnect");
 		var index = user.indexOf(socket.id);
+		log = `${user_name[index]} Disconnected\n`
 		if(index > -1){
 			user.splice(index, 1);
+			user_name.splice(index, 1);
 		}
-		log = "User Disconnected\n"
+
 		fs.appendFileSync('server.log', log);
 	});
 		

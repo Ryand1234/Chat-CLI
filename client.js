@@ -4,6 +4,7 @@ const chalk = require('chalk');
 const { exec } = require('child_process');
 var rsaWrapper = require('./encrypt_decrypt')
 var fs = require('fs')
+var user;
 
 
 function eror(code){
@@ -93,8 +94,15 @@ socket.on('sender_msg', (data) => {
 socket.on('reciever_msg', (data) => {
 	var dec_data = rsaWrapper.decrypt(rsaWrapper.serverPrivate, data)
         console.log(chalk.green("Message: ",dec_data));
-  })
+})
 
+//To recive personal message
+socket.on("recieve_pmsg", (data)=>{
+	var dec_msg = rsaWrapper.decrypt(rsaWrapper.serverPrivate, data.msg)
+	var title = "======" + data.from + "========"
+	console.log(chalk.red(title))
+	console.log(chalk.green(dec_msg))
+})
 
 repl.start({
       prompt: '',
@@ -105,27 +113,52 @@ repl.start({
 	
 	   //if op is undefined or op is not equal to cmd, msg, user and con
 	   //then it means required format is not provided so it will show usage
-	   if((op == undefined)||((op != "cmd")&&(op != "msg")&&(op != "user")&&(op != "con"))){
+	   if((op == undefined)||((op != "cmd")&&(op != "pmsg")&&(op != "msg")&&(op != "user")&&(op != "con"))){
 		   usage();
 	   }else{
 		   var log;
 		if(op == "cmd"){
-			log = "Command executed from client side is " + msg;
+			log = "Command executed by " + user + " is " + msg + "\n";
 		} else {
 			if(op == "msg"){
-				log = "Message send from client side is " + msg;
+				log = "Message send from " + user + " to all users is " + msg + "\n";
 			} else {
 				if(op == "user"){
-					log = "User requested for connected user list";
+					log = "User requested for connected user list\n" ;
 				} else {
-					log = "User requested for connection"
+					if(op == "con"){
+						cmd[1] = cmd[1] + " "
+						var posible_usr = cmd[1].split(" ")
+						user = posible_usr[1]
+						log = "User requested for connection\n"
+					} else {
+						str1 = cmd[1] + " "
+						str = cmd[1].split(" ")
+						msg = ''
+						for(var i = 2; i < str.length; i++){
+							msg = msg + str[i] + " "
+						}
+						to = str[1]
+						console.log("MSG: ", msg)
+						log = "Message sent from " + user + " to " + to + " is " + msg + "\n"
+					}
 				}
+			}
 		}
 
 		//To Write Client log
 		fs.appendFileSync('client.log', log);
 		var enc_msg = rsaWrapper.encrypt(rsaWrapper.clientPub, msg);
-        	socket.emit(op,enc_msg)
+		if(op != "pmsg"){
+	        	socket.emit(op,enc_msg)
+		} else {
+			var mesge = {
+				msg : enc_msg,
+				to : to,
+				from : user
+			}
+			socket.emit(op, mesge)
+		}
 	   }
       }
   })
@@ -135,5 +168,6 @@ function usage(){
 	console.log("cmd: <COMMAND>");
 	console.log("msg: <MESSAGE>");
 	console.log("user:");
+	console.log("pmsg: <MESSAGE> <USER_NAME>");
 	console.log("con: <USER_NAME>\n");
 }
