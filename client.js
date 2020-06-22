@@ -118,10 +118,10 @@ repl.start({
 	   }else{
 		   var log;
 		if(op == "cmd"){
-			log = "Command executed by " + user + " is " + msg + "\n";
+			log = "Command executed by " + user + " is " + msg ;
 		} else {
 			if(op == "msg"){
-				log = "Message send from " + user + " to all users is " + msg + "\n";
+				log = "Message send from " + user + " to all users is " + msg;
 			} else {
 				if(op == "user"){
 					log = "User requested for connected user list\n" ;
@@ -129,7 +129,7 @@ repl.start({
 					if(op == "con"){
 						cmd[1] = cmd[1] + " "
 						var posible_usr = cmd[1].split(" ")
-						user = posible_usr[1]
+						user = posible_usr[1].replace(/(\n| )/gm, "")
 						log = "User requested for connection\n"
 					} else {
 						str1 = cmd[1] + " "
@@ -138,7 +138,7 @@ repl.start({
 						for(var i = 2; i < str.length; i++){
 							msg = msg + str[i] + " "
 						}
-						to = str[1]
+						to = str[1].replace(/(\n| )/gm, "");
 						console.log("MSG: ", msg)
 						log = "Message sent from " + user + " to " + to + " is " + msg + "\n"
 					}
