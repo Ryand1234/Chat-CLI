@@ -29,13 +29,18 @@ io.on('connection', (socket)=>{
 			//Push Socket id to user array and write to log
 			var dec_data = rsaWrapper.decrypt(rsaWrapper.clientPrivate, data);
 			var strip_data = dec_data.replace(/(\n| )/gm, "");
-			log = `${strip_data} connected\n`
-			fs.appendFileSync('server.log', log);
-			user.push(socket.id);
-			user_name.push(strip_data)
-			user_name_list[strip_data] = socket.id;
-			socket.con = true;
-			io.to(socket.id).emit('con', "Connected");
+			var index = user_name.indexOf(strip_data)
+			if(index > -1){
+				io.to(socket.id).emit('con', "User id already taken please take a new one.\n execute user: to see used User Id\n");
+			} else {
+				log = `${strip_data} connected\n`
+				fs.appendFileSync('server.log', log);
+				user.push(socket.id);
+				user_name.push(strip_data)
+				user_name_list[strip_data] = socket.id;
+				socket.con = true;
+				io.to(socket.id).emit('con', "Connected");
+			}
 		} else {
 			io.to(socket.id).emit('con', "Please Disconnect from previous session to again login\n");
 		}
@@ -86,10 +91,10 @@ io.on('connection', (socket)=>{
 	});
 
 	socket.on('err', (data)=>{
-		
+
 		var id = data.id;
 		var error = data.error;
-		
+
 		//Decrypt Error Message
 		var dec_data = rsaWrapper.decrypt(rsaWrapper.clientPrivate, error);
 		var msg = "NOACK\n" + dec_data;
