@@ -127,11 +127,14 @@ repl.start({
 					log = "User requested for connected user list\n" ;
 				} else {
 					if(op == "con"){
+
 						cmd[1] = cmd[1] + " "
 						var posible_usr = cmd[1].split(" ")
 						user = posible_usr[1].replace(/(\n| )/gm, "")
 						log = "User requested for connection\n"
+
 					} else {
+
 						str1 = cmd[1] + " "
 						str = cmd[1].split(" ")
 						msg = ''
@@ -139,8 +142,8 @@ repl.start({
 							msg = msg + str[i] + " "
 						}
 						to = str[1].replace(/(\n| )/gm, "");
-						console.log("MSG: ", msg)
 						log = "Message sent from " + user + " to " + to + " is " + msg + "\n"
+
 					}
 				}
 			}
