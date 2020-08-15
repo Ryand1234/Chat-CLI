@@ -20,6 +20,35 @@ var user_name_list = {}
 var i = 0;
 var log;
 
+//Server Log Files
+app.get('/log/server',async (req, res)=>{
+	var readStream = fs.createReadStream('./server.log');
+	// We replaced all the event handlers with a simple call to readStream.pipe()
+	readStream.on('open', function() {
+		// This just pipes the read stream to the response object (which goes to the client)
+		readStream.pipe(res);
+	});
+
+	readStream.on('error', function(err) {
+		res.end(err);
+	});
+})
+
+//Client Log files
+app.get('/log/client',async (req, res)=>{
+	var readStream = fs.createReadStream('./client.log');
+	// We replaced all the event handlers with a simple call to readStream.pipe()
+	readStream.on('open', function() {
+		// This just pipes the read stream to the response object (which goes to the client)
+		readStream.pipe(res);
+	});
+
+	readStream.on('error', function(err) {
+		res.end(err);
+	});
+})
+
+
 io.on('connection', (socket)=>{
 	
 	socket.on('con', (data)=>{
