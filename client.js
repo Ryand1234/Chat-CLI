@@ -1,10 +1,12 @@
-var socket = require('socket.io-client')('http://localhost:3000');
+var socket = require('socket.io-client')('https://chat-cli.herokuapp.com');
 const repl = require('repl')
-const chalk = require('chalk');  
+const chalk = require('chalk');
+const figlet = require('figlet')
 const { exec } = require('child_process');
 var rsaWrapper = require('./encrypt_decrypt')
 var fs = require('fs')
 var user;
+const end = "========================================================"
 
 
 function eror(code){
@@ -30,13 +32,15 @@ socket.on('disconnect', function() {
 
 //When Client is connected to server
 socket.on('connect', () => {
-      console.log(chalk.red('=== start chatting ==='))
+      console.log(chalk.green(figlet.textSync('Chat CLI', { horizontalLayout: 'full'})))
+      console.log(chalk.red(end))
   })  
 
 
-//Handle Connection Error
+//Handle Connection initialization
 socket.on('con', (data)=>{
-	console.log(chalk.red(data));
+	console.log(chalk.green(data));
+	console.log(chalk.red(end))
 });
 
 //User list
@@ -45,6 +49,7 @@ socket.on('user', (data)=>{
 	for(let user of data){
 		console.log(chalk.red(user))
 	}
+	console.log(chalk.red(end))
 });
 
 //To Handle Command Request
@@ -86,6 +91,7 @@ socket.on('cmd', async (data) => {
 socket.on('sender_msg', (data) => {
 
         console.log(chalk.green("Message: ",data));
+        console.log(chalk.red(end))
   })
 
 
@@ -143,7 +149,6 @@ repl.start({
 						}
 						to = str[1].replace(/(\n| )/gm, "");
 						log = "Message sent from " + user + " to " + to + " is " + msg + "\n"
-
 					}
 				}
 			}
@@ -167,10 +172,13 @@ repl.start({
   })
 
 function usage(){
-	console.log("USAGE: ");
-	console.log("cmd: <COMMAND>");
-	console.log("msg: <MESSAGE>");
-	console.log("user:");
-	console.log("pmsg: <MESSAGE> <USER_NAME>");
-	console.log("con: <USER_NAME>\n");
+	console.log(chalk.red("-------------------USAGE--------------"));
+	console.log("");
+	console.log(chalk.yellow("		cmd: <COMMAND>"));
+	console.log(chalk.cyan("		msg: <MESSAGE>"));
+	console.log(chalk.yellow("		user:"));
+	console.log(chalk.cyan("		pmsg: <USER_NAME> <MESSAGE>"));
+	console.log(chalk.yellow("		con: <USER_NAME>\n"));
+	console.log("");
+	console.log(chalk.red("--------------------Report Ends--------------"));
 }

@@ -1,9 +1,9 @@
 FROM ubuntu:19.10
 
-RUN apt-get update && apt-get upgrade
+RUN apt-get update && apt-get -y upgrade
 
 RUN apt-get install -y npm 
-RUN apt-get install -y node
+RUN apt-get install -y nodejs
 
 RUN mkdir /usr/local/chat
 COPY . /usr/local/chat
